@@ -11,7 +11,7 @@
 
 # MIT LICENCE
 
-### 이 플러그인을 2차 수정을 금지 합니다.
+### 이 플러그인을 2차 수정 및 판매를 금지 합니다.
 
 # Guild
 ```
@@ -26,4 +26,4 @@
 
 # MIT License
 
-### This problem has been prevented by the second round
+### Secondary modification and sale of this plugin is prohibited.
