@@ -20,9 +20,9 @@
 + title
 ++ /monoguild don't lose the great wall
 ```
-#inquiry
+# inquiry
 
-##Kakao https://open.kakao.com/o/shIG85cd
+## Kakao https://open.kakao.com/o/shIG85cd
 
 # MIT License
 
