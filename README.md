@@ -11,7 +11,7 @@
 
 # MIT LICENCE
 
-## 이 플러그인을 2차 수정을 금지 합니다.
+### 이 플러그인을 2차 수정을 금지 합니다.
 
 # Guild
 ```
@@ -22,8 +22,8 @@
 ```
 # inquiry
 
-## Kakao https://open.kakao.com/o/shIG85cd
+### Kakao https://open.kakao.com/o/shIG85cd
 
 # MIT License
 
-## This problem has been prevented by the second round
+### This problem has been prevented by the second round
