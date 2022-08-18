@@ -9,7 +9,7 @@
 
 ## kakao: https://open.kakao.com/o/shIG85cd
 
-# MIT LICENCE
+# MIT License
 
 ### 이 플러그인을 2차 수정 및 판매를 금지 합니다.
 
