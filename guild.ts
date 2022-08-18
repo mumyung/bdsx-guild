@@ -54,7 +54,7 @@ const titlestyle: string = "b";
 
 import { events } from "bdsx/event";
 import { bedrockServer } from "bdsx/launcher";
-import { ActorWildcardCommandSelector, CommandPermissionLevel } from "bdsx/bds/command";
+import { ActorWildcardCommandSelector, CommandPermissionLevel, CommandRawText } from "bdsx/bds/command";
 import { MinecraftPacketIds } from "bdsx/bds/packetids";
 import { CANCEL } from "bdsx/common";
 import { command } from "bdsx/command"
@@ -63,7 +63,6 @@ import { Form } from "bdsx/bds/form"
 import * as fs from "fs";
 import { CxxString } from "bdsx/nativetype";
 import { ServerPlayer } from "bdsx/bds/player";
-import { red } from "colors";
 
 if (fs.existsSync(guildFile) == false) {
     fs.writeFileSync(guildFile, JSON.stringify({}));
@@ -134,7 +133,6 @@ function saveGuildNumber1() {
     fs.writeFileSync(guildNumber1, JSON.stringify(guildNumber1Read), "utf8");
 }
 
-
 events.playerAttack.on((ev) => {
     const victimName = ev.victim.getName();
     const playerName = ev.player.getName();
@@ -145,9 +143,8 @@ events.playerAttack.on((ev) => {
             const guildDB = `./${guildDirectory}/${guildFileRead[playerName]}/DB.json`
             const read = JSON.parse(fs.readFileSync(guildDB, "utf8"))
             if (read.pvp == 1) {
-
             } else {
-                bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c같은 길드끼리 때릴수 없습니다!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c같은 길드끼리 때릴수 없습니다!"}]}`);
                 return CANCEL;
             }
         }
@@ -173,14 +170,14 @@ events.packetBefore(MinecraftPacketIds.Text).on((pkt, ni, id) => {
     const msg = pkt.message.replace(" ", "");
 
     if (msg.length > 30) {
-        bedrockServer.executeCommand(`tellraw @a[name="${username}"] {"rawtext":[{"text":"§c채팅이 너무 깁니다!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${username}" {"rawtext":[{"text":"§c채팅이 너무 깁니다!"}]}`);
         return CANCEL;
     }
 
     if (lastChatTimes[username] === undefined) {
         lastChatTimes[username] = Date.now();
     } else if (Date.now() - lastChatTimes[username] < 1000) {
-        bedrockServer.executeCommand(`tellraw @a[name="${username}"] {"rawtext":[{"text":"§c채팅이 너무 빠릅니다!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${username}" {"rawtext":[{"text":"§c채팅이 너무 빠릅니다!"}]}`);
         return CANCEL;
     } else {
         lastChatTimes[username] = Date.now();
@@ -216,7 +213,7 @@ events.packetBefore(MinecraftPacketIds.Text).on((ptr, ni, id) => {
     if (guildFileRead[name] === undefined) {
         // 길드 없을떄 채팅
         if (message.includes(`\\`) == true) {
-            bedrockServer.executeCommand(`tellraw @a[name=${name}] {"rawtext":[{"text":"§c\\이 기호는 이 섭에서 쓸수 없습니다!"}]}`)
+            bedrockServer.executeCommand(`tellraw "${name}" {"rawtext":[{"text":"§c\\이 기호는 이 섭에서 쓸수 없습니다!"}]}`)
             return CANCEL;
         } else {
             bedrockServer.executeCommand(`tellraw @a {"rawtext":[{"text":"§l< §r${guild}§l§f > §l< §r${title}§f§l >§r ${name} => ${message}"}]}`);
@@ -226,7 +223,7 @@ events.packetBefore(MinecraftPacketIds.Text).on((ptr, ni, id) => {
         const guildDB = `./${guildDirectory}/${guildFileRead[name]}/DB.json`
         const guildAuthority = JSON.parse(fs.readFileSync(guildDB, "utf8"))[name] || guildBase
         if (message.includes(`\\`) == true) {
-            bedrockServer.executeCommand(`tellraw @a[name=${name}] {"rawtext":[{"text":"§c\\이 기호는 이 섭에서 쓸수 없습니다!"}]}`)
+            bedrockServer.executeCommand(`tellraw "${name}" {"rawtext":[{"text":"§c\\이 기호는 이 섭에서 쓸수 없습니다!"}]}`)
             return CANCEL;
         } else if (guildAuthority === "길드장") {
             bedrockServer.executeCommand(`tellraw @a {"rawtext":[{"text":"§l< §f${guild}§l§f ${guildNum} > = < §c§l길드장§f > §l< §f${title}§l§f >§r ${name} => ${message}"}]}`);
@@ -241,6 +238,17 @@ events.packetBefore(MinecraftPacketIds.Text).on((ptr, ni, id) => {
     }
 });
 
+events.playerAttack.on((ev) => {
+    if (ev.victim.hasTag("길드")) {
+        if (ev.victim.getEntityTypeId() == 16778099 || ev.victim.getEntityTypeId() == 307) {
+            guildMenu(ev.player.getNetworkIdentifier())
+            ev.victim.setNameTag("§l§5[ §f길드 §5]")
+            return CANCEL;
+        }
+        return CANCEL;
+    }
+})
+
 command.register("길드", "길드메뉴를 엽니다.", CommandPermissionLevel.Normal).overload(async (p, o, op) => {
     const NetworkIdentifier: any = o.getEntity()?.getNetworkIdentifier()
     guildMenu(NetworkIdentifier);
@@ -249,7 +257,7 @@ command.register("길드", "길드메뉴를 엽니다.", CommandPermissionLevel.
 command.register("ㄱ", "길드채팅을 합니다.", CommandPermissionLevel.Normal).overload(async (p, o, op) => {
     const playerName: any = o.getName()
     if (guildFileRead[playerName] === undefined) {
-        bedrockServer.executeCommand(`tellraw @a[name="${playerName}"] {"rawtext":[{"text":"§c길드를 생성/가입 하시고 길드채팅을 이용해주세요!"}]}`)
+        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c길드를 생성/가입 하시고 길드채팅을 이용해주세요!"}]}`)
     } else {
         const file = `./${guildDirectory}/${guildFileRead[playerName]}/DB.json`
         const read = JSON.parse(fs.readFileSync(file, "utf8"))
@@ -257,15 +265,19 @@ command.register("ㄱ", "길드채팅을 합니다.", CommandPermissionLevel.Nor
         const title = titleFileRead[playerName] || titleBase
         member.forEach(function (element: any, index: any, arr: any) {
             if (read[element] === "멤버" || read[element] === "길드장" || read[element] === "부길드장") {
-                bedrockServer.executeCommand(`tellraw @a[name="${element}"] {"rawtext":[{"text":"§l§a길드채팅 §f< §f${guildFileRead[playerName]}§l§f ${guildNumberRead[guildFileRead[playerName]]} > = < §c§l길드장§f > §l< §f${title}§l§f >§r ${playerName} => ${p.text}"}]}`);
+                let per;
+                if (read[element] === "멤버") per = "§b§l멤버§f";
+                if (read[element] === "길드장") per = "§c§l길드장§f";
+                if (read[element] === "부길드장") per = "§e§l부길드장§f";
+                bedrockServer.executeCommand(`tellraw "${element}" {"rawtext":[{"text":"§l§a길드채팅 §f< §f${guildFileRead[playerName]}§l§f ${guildNumberRead[guildFileRead[playerName]]} > = < ${per} > §l< §f${title}§l§f >§r ${playerName} => ${p.text.text}"}]}`);
             }
         })
     }
 }, {
-    text:CxxString
+    text:CommandRawText
 });
 
-export async function guildMenu(ni: NetworkIdentifier) {
+async function guildMenu(ni: NetworkIdentifier) {
     const playerName: any = ni.getActor()?.getName()
     const guildDB = `./${guildDirectory}/${guildFileRead[playerName]}/DB.json`
 
@@ -292,15 +304,17 @@ export async function guildMenu(ni: NetworkIdentifier) {
                 }
             ]
         })
-        if (res == 0) {
+        if (res === null) return;
+
+        if (res === 0) {
             rank(ni)
-        } else if (res == 1) {
+        } else if (res === 1) {
             make(ni)
-        } else if (res == 2) {
+        } else if (res === 2) {
             join(ni)
-        } else if (res == 3) {
+        } else if (res === 3) {
             information(ni)
-        } else if (res == 4) {
+        } else if (res === 4) {
             guildSearch(ni)
         }
 
@@ -330,17 +344,17 @@ export async function guildMenu(ni: NetworkIdentifier) {
                 }
             ]
         })
-        if (res == 1) {
+        if (res === 1) {
             personnel(ni)
-        } else if (res == 5) {
+        } else if (res === 5) {
             guildSearch(ni)
-        } else if (res == 2) {
+        } else if (res === 2) {
             request(ni)
-        } else if (res == 4) {
+        } else if (res === 4) {
             information(ni)
-        } else if (res == 3) {
+        } else if (res === 3) {
             management(ni)
-        } else if (res == 0) {
+        } else if (res === 0) {
             rank(ni)
         }
     } else if (JSON.parse(fs.readFileSync(guildDB, "utf8"))[playerName] == "부길드장") {
@@ -363,7 +377,7 @@ export async function guildMenu(ni: NetworkIdentifier) {
                 },
                 {
                     text: "§l§d길드 찾기"
-                }, 
+                },
                 {
                     text: "§l길드끼리 PVP 설정"
                 },
@@ -375,21 +389,21 @@ export async function guildMenu(ni: NetworkIdentifier) {
                 }
             ]
         })
-        if (res == 1) {
+        if (res === 1) {
             personnel(ni)
-        } else if (res == 7) {
+        } else if (res === 7) {
             leave(ni)
-        } else if (res == 6) {
+        } else if (res === 6) {
             kick1(ni)
-        } else if (res == 2) {
+        } else if (res === 2) {
             request(ni)
-        } else if (res == 3) {
+        } else if (res === 3) {
             information(ni)
-        } else if (res == 0) {
+        } else if (res === 0) {
             rank(ni)
-        } else if (res == 4) {
+        } else if (res === 4) {
             guildSearch(ni)
-        } else if (res == 5) {
+        } else if (res === 5) {
             attack(ni)
         }
     } else {
@@ -417,13 +431,13 @@ export async function guildMenu(ni: NetworkIdentifier) {
         })
         if (res === 1) {
             personnel(ni)
-        } else if (res == 4) {
+        } else if (res === 4) {
             leave(ni)
-        } else if (res == 2) {
+        } else if (res === 2) {
             information(ni)
-        } else if (res == 0) {
+        } else if (res === 0) {
             rank(ni)
-        } else if (res == 3) {
+        } else if (res === 3) {
             guildSearch(ni)
         }
     }
@@ -433,7 +447,7 @@ async function make(ni: NetworkIdentifier) {
     const playerName: any = ni.getActor()?.getName();
     if (guildFileRead[playerName] === undefined || "") {
         let drop = ['조건 없음', '요청후 승인'];
-        let pvp = ['pvp 허용', 'pvp 비허용'];
+        let pvps = ['pvp 허용', 'pvp 비허용'];
         const res = await Form.sendTo(ni, {
             type: "custom_form",
             title: "§l길드",
@@ -458,23 +472,24 @@ async function make(ni: NetworkIdentifier) {
                 {
                     "type": "dropdown",
                     "text": "길드끼리 PVP를 설정해주세요!",
-                    "options": pvp
+                    "options": pvps
                 }
             ]
         })
-        if (res==null) return;
+        if (res === null) return;
 
-        const name = res
-        const explanation = res
-        const dropz = res
+        const name = res[1]
+        const explanation = res[2]
+        const dropz = res[3]
+        const pvp = res[4]
 
         if (name) {
             if (explanation) {
                 if (String(name).length > guildMax) {
-                    bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c${guildMax}글자 미만으로 이름을 설정해주세요!"}]}`);
+                    bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c${guildMax}글자 미만으로 이름을 설정해주세요!"}]}`);
                 } else {
                     if (String(explanation).length > explanationMax) {
-                        bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c${explanationMax}글자 미만으로 설명을 설정해주세요!"}]}`);
+                        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c${explanationMax}글자 미만으로 설명을 설정해주세요!"}]}`);
                     } else {
                         if (fs.existsSync(`./${guildDirectory}/${name}`) == false) {
                             fs.mkdirSync(`./${guildDirectory}/${name}`);
@@ -503,20 +518,20 @@ async function make(ni: NetworkIdentifier) {
                             guildNumber1Read.number = guildNumber1Read.number + 1
                             saveGuildNumber1();
 
-                            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a${name}이라는 길드를 만들었습니다!"}]}`);
+                            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a${name}이라는 길드를 만들었습니다!"}]}`);
                         } else {
-                            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c${name}은 이미 있습니다!"}]}`);
+                            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c${name}은 이미 있습니다!"}]}`);
                         }
                     }
                 }
             } else {
-                bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c길드 설명을 설정해주세요!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c길드 설명을 설정해주세요!"}]}`);
             }
         } else {
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c길드 이름을 설정해주세요!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c길드 이름을 설정해주세요!"}]}`);
         }
     } else {
-        bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§cError!\n당신은 이미 길드를 만들었습니다! \n이 메세지가 보일경우 방장을 부르세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§cError!\n당신은 이미 길드를 만들었습니다! \n이 메세지가 보일경우 방장을 부르세요!"}]}`);
     }
 }
 
@@ -564,16 +579,16 @@ async function join(ni: NetworkIdentifier) {
             }
         ]
     })
-    if (res==null) return;
-    const name = res[0];
+    if (res === null) return;
+    const name = res[0]
     if (drop[name] == undefined) {
-        bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§c길드를 선택해주세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§c길드를 선택해주세요!"}]}`);
     } else {
         const file = `./${guildDirectory}/${drop[name]}/DB.json`
         const read = JSON.parse(fs.readFileSync(file, "utf8"))
         const playerName: any = ni.getActor()?.getName()
         if (read[playerName] == "kick") {
-            bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§c당신은 해당 길드에서 추방되었습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§c당신은 해당 길드에서 추방되었습니다!"}]}`);
         } else {
             if (read["max"] > read["now"]) {
                 if (read["dropz"] == 0) {
@@ -588,16 +603,16 @@ async function join(ni: NetworkIdentifier) {
                     saveRequest()
                     read.now = read.now + 1
                     saveDB();
-                    bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§a${drop[name]}길드에 성공적으로 가입했습니다!"}]}`);
+                    bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§a${drop[name]}길드에 성공적으로 가입했습니다!"}]}`);
                 } else {
                     const leader = Object.keys(read).find(key => read[key] === "길드장")
                     requestFileRead[playerName] = drop[name]
                     saveRequest()
-                    bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§a해당 길드에 승인 요청을 보냈습니다!"}]}`);
-                    bedrockServer.executeCommand(`tellraw @a[name=${leader}] {"rawtext":[{"text":"§a길드 승인 요청이 왔습니다!"}]}`);
+                    bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§a해당 길드에 승인 요청을 보냈습니다!"}]}`);
+                    bedrockServer.executeCommand(`tellraw "${leader}" {"rawtext":[{"text":"§a길드 승인 요청이 왔습니다!"}]}`);
                 }
             } else {
-                bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§c현재 해당 길드의 인원이 너무 많아 해당 길드에는 가입이 안됩니다!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§c현재 해당 길드의 인원이 너무 많아 해당 길드에는 가입이 안됩니다!"}]}`);
             }
         }
     }
@@ -636,9 +651,9 @@ async function leave(ni: NetworkIdentifier) {
         button1: "§l§a네",
         button2: "§l§c아니요"
     })
-    if (res==null) return;
-    if (res===true) {
-        bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§a성공적으로 (${guildFileRead[playerName]})길드에 나갔습니다!"}]}`);
+    if (res === null) return;
+    if (res === true) {
+        bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§a성공적으로 (${guildFileRead[playerName]})길드에 나갔습니다!"}]}`);
         delete read[playerName]
         read.now = read.now - 1
         fs.writeFileSync(file, JSON.stringify(read), "utf8");
@@ -670,11 +685,11 @@ async function kick1(ni: NetworkIdentifier) {
             }
         ]
     })
-    if (res==null) return;
+    if (res === null) return;
     const kick = res[0]
     const kickPlayer = array[kick]
     if (array[kick] == undefined) {
-        bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c플레이어를 선택해주세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c플레이어를 선택해주세요!"}]}`);
     } else {
         if (res !== undefined) {
             const res = await Form.sendTo(ni, {
@@ -686,8 +701,8 @@ async function kick1(ni: NetworkIdentifier) {
             })
             if (res === null) return;
             if (res) {
-                bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§a성공적으로 ${kickPlayer}님을 추방했습니다!"}]}`);
-                bedrockServer.executeCommand(`tellraw @a[name=${kickPlayer}] {"rawtext":[{"text":"§c당신은 ${playerName}님에 의해 추방당했습니다!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§a성공적으로 ${kickPlayer}님을 추방했습니다!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${kickPlayer}" {"rawtext":[{"text":"§c당신은 ${playerName}님에 의해 추방당했습니다!"}]}`);
                 delete read[kickPlayer]
                 read.now = read.now - 1
                 fs.writeFileSync(file, JSON.stringify(read), "utf8");
@@ -728,7 +743,7 @@ async function leave1(ni: NetworkIdentifier) {
         })
         fs.unlinkSync(file)
         fs.rmdirSync(files, { recursive: true })
-        bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§a성공적으로 길드를 해산했습니다!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§a성공적으로 길드를 해산했습니다!"}]}`);
     }
 }
 
@@ -756,7 +771,7 @@ async function request(ni: NetworkIdentifier) {
     if (res === null) return;
     const name = res[0]
     if (array[name] == undefined) {
-        bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§c플레이어를 선택해주세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§c플레이어를 선택해주세요!"}]}`);
     } else {
         const names: any = array[name]
         const file = `./${guildDirectory}/${guildFileRead[playerName]}/DB.json`
@@ -765,7 +780,7 @@ async function request(ni: NetworkIdentifier) {
             fs.writeFileSync(`./${guildDirectory}/${guildFileRead[playerName]}/DB.json`, JSON.stringify(read), "utf8");
         }
         if (read.now >= read.max) {
-            bedrockServer.executeCommand(`tellraw @a[name=${names}] {"rawtext":[{"text":"§c길드원이 너무 많아 승인을 하지 못했습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${names}" {"rawtext":[{"text":"§c길드원이 너무 많아 승인을 하지 못했습니다!"}]}`);
         } else {
             read[names] = "멤버";
             read.now = read.now + 1
@@ -774,8 +789,8 @@ async function request(ni: NetworkIdentifier) {
             saveGuild();
             delete requestFileRead[names]
             saveRequest()
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a${array[name]}님의 요청을 승인했습니다!"}]}`);
-            bedrockServer.executeCommand(`tellraw @a[name=${array[name]}] {"rawtext":[{"text":"§a${playerName}님이 승인해 ${guildFileRead[playerName]}길드에 가입했습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a${array[name]}님의 요청을 승인했습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${array[name]}" {"rawtext":[{"text":"§a${playerName}님이 승인해 ${guildFileRead[playerName]}길드에 가입했습니다!"}]}`);
         }
     }
 }
@@ -797,7 +812,7 @@ async function information(ni: NetworkIdentifier) {
     if (res === null) return;
     const name = res[0]
     if (drop[name] == undefined) {
-        bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§c길드를 선택해주세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§c길드를 선택해주세요!"}]}`);
     } else {
         const guilds: any = drop[name]
         const file = `./${guildDirectory}/${guilds}/DB.json`
@@ -874,20 +889,19 @@ async function management(ni: NetworkIdentifier) {
             }
         ]
     })
-    if (res===null) return;
-    if (res == 6) {
+    if (res === 6) {
         leave1(ni)
-    } else if (res == 0) {
+    } else if (res === 0) {
         setExplanation(ni)
-    } else if (res == 3) {
+    } else if (res === 3) {
         kick1(ni)
-    } else if (res == 1) {
+    } else if (res === 1) {
         condition(ni)
-    } else if (res == 5) {
+    } else if (res === 5) {
         Glead(ni)
-    } else if (res == 4) {
+    } else if (res === 4) {
         subLeader(ni)
-    } else if (res == 2) {
+    } else if (res === 2) {
         attack(ni)
     }
 }
@@ -911,7 +925,7 @@ async function setExplanation(ni: NetworkIdentifier) {
         ]
     })
     if (res === null) return;
-    const newExplanation = res
+    const newExplanation = res[1]
     if (newExplanation) {
         read.explanation = newExplanation
         function saveDB() {
@@ -919,9 +933,9 @@ async function setExplanation(ni: NetworkIdentifier) {
         }
         const read1 = JSON.parse(fs.readFileSync(file, "utf8"))
         saveDB();
-        bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a성공적으로 설명을 ${read1.explanation}에서 ${newExplanation}으로 바꿨습니다!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 설명을 ${read1.explanation}에서 ${newExplanation}으로 바꿨습니다!"}]}`);
     } else {
-        bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c길드 설명을 써주세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c길드 설명을 써주세요!"}]}`);
     }
 }
 
@@ -953,7 +967,7 @@ async function condition(ni: NetworkIdentifier) {
     }
     const read1 = JSON.parse(fs.readFileSync(file, "utf8"))
     saveDB();
-    bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a성공적으로 가입 조건을 ${drop[read1.dropz]}에서 ${drop[newCondition]}으로 바꿨습니다!"}]}`);
+    bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 가입 조건을 ${drop[read1.dropz]}에서 ${drop[newCondition]}으로 바꿨습니다!"}]}`);
 }
 
 async function subLeader(ni: NetworkIdentifier) {
@@ -992,23 +1006,23 @@ async function subLeader(ni: NetworkIdentifier) {
     const subLeader: any = Object.keys(read).find(key => read[key] === "부길드장")
     if (newSubLeader == 0) {
         if (subLeader == undefined) {
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a성공적으로 부길드장을 없음에서 없음으로 바꿨습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 부길드장을 없음에서 없음으로 바꿨습니다!"}]}`);
         } else {
             read[subLeader] = "멤버"
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a성공적으로 부길드장을 ${subLeader}에서 없음으로 바꿨습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 부길드장을 ${subLeader}에서 없음으로 바꿨습니다!"}]}`);
             saveDB()
         }
     } else {
         if (subLeader == undefined) {
             read[newSubLeaders] = "부길드장"
             saveDB()
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a성공적으로 부길드장 없음에서 ${newSubLeaders}으로 바꿨습니다!"}]}`);
-            bedrockServer.executeCommand(`tellraw @a[name=${newSubLeaders}] {"rawtext":[{"text":"§a당신은 ${guildFileRead[playerName]}길드의 부길드장이 되었습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 부길드장 없음에서 ${newSubLeaders}으로 바꿨습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${newSubLeaders}" {"rawtext":[{"text":"§a당신은 ${guildFileRead[playerName]}길드의 부길드장이 되었습니다!"}]}`);
         } else {
             read[subLeader] = "멤버"
             read[newSubLeaders] = "부길드장"
             saveDB()
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§a성공적으로 부길드장을 ${subLeader}에서 ${newSubLeaders}으로 바꿨습니다!"}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 부길드장을 ${subLeader}에서 ${newSubLeaders}으로 바꿨습니다!"}]}`);
         }
     }
 }
@@ -1040,7 +1054,7 @@ async function Glead(ni: NetworkIdentifier) {
     const guild = res[0]
     const guildPlayer = array[guild]
     if (array[guild] == undefined) {
-        bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c플레이어를 선택해주세요!"}]}`);
+        bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c플레이어를 선택해주세요!"}]}`);
     } else {
         if (res !== undefined) {
             const res = await Form.sendTo(ni, {
@@ -1052,8 +1066,8 @@ async function Glead(ni: NetworkIdentifier) {
             })
             if (res === null) return;
             if (res) {
-                bedrockServer.executeCommand(`tellraw @a[name=${ni.getActor()?.getName()}] {"rawtext":[{"text":"§a성공적으로 ${guildPlayer}님에게 길드장을 넘겨주었습니다!"}]}`);
-                bedrockServer.executeCommand(`tellraw @a[name=${guildPlayer}] {"rawtext":[{"text":"§a당신은 ${guildFileRead[playerName]}길드의 길드장이 되었습니다!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${ni.getActor()?.getName()}" {"rawtext":[{"text":"§a성공적으로 ${guildPlayer}님에게 길드장을 넘겨주었습니다!"}]}`);
+                bedrockServer.executeCommand(`tellraw "${guildPlayer}" {"rawtext":[{"text":"§a당신은 ${guildFileRead[playerName]}길드의 길드장이 되었습니다!"}]}`);
                 read[guildPlayer] = "길드장"
                 read[playerName] = "멤버"
                 fs.writeFileSync(file, JSON.stringify(read), "utf8");
@@ -1086,10 +1100,10 @@ async function guildSearch(ni: NetworkIdentifier) {
     if (search == 1) {
         const number = searchGuild.replace(/[^0-9]/g, ' ')
         if (number > guildNumber1Read.number) {
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c해당 길드 번호는 등록되어 있지 않은 길드번호 입니다."}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c해당 길드 번호는 등록되어 있지 않은 길드번호 입니다."}]}`);
         } else {
             if (number == undefined || number.includes(' ')) {
-                bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c길드 번호로 찾으시려면 숫자를 써주세요."}]}`);
+                bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c길드 번호로 찾으시려면 숫자를 써주세요."}]}`);
             } else {
                 const guildNum = Object.values(guildNumberRead)
                 let guild: any = []
@@ -1101,7 +1115,7 @@ async function guildSearch(ni: NetworkIdentifier) {
                     }
                 })
                 if (fs.existsSync(`./${guildDirectory}/${guild}/DB.json`) == false) {
-                    bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c해당 길드는 해산한 길드입니다."}]}`);
+                    bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c해당 길드는 해산한 길드입니다."}]}`);
                 } else {
                     const guilds: any = guild[0]
                     const file = `./${guildDirectory}/${guilds}/DB.json`
@@ -1150,7 +1164,7 @@ async function guildSearch(ni: NetworkIdentifier) {
         }
     } else {
         if (fs.existsSync(`./${guildDirectory}/${searchGuild}/DB.json`) == false) {
-            bedrockServer.executeCommand(`tellraw @a[name=${playerName}] {"rawtext":[{"text":"§c해당 길드를 찾지 못했습니다."}]}`);
+            bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§c해당 길드를 찾지 못했습니다."}]}`);
         } else {
             const file = `./${guildDirectory}/${searchGuild}/DB.json`
             const read = JSON.parse(fs.readFileSync(file, "utf8"))
@@ -1225,7 +1239,7 @@ async function attack(ni: NetworkIdentifier) {
     }
     const read1 = JSON.parse(fs.readFileSync(file, "utf8"))
     saveDB();
-    bedrockServer.executeCommand(`tellraw @a[name="${playerName}"] {"rawtext":[{"text":"§a성공적으로 길드끼리 PVP 설정을 ${drop[read1.pvp]}에서 ${drop[newPvp]}으로 바꿨습니다!"}]}`);
+    bedrockServer.executeCommand(`tellraw "${playerName}" {"rawtext":[{"text":"§a성공적으로 길드끼리 PVP 설정을 ${drop[read1.pvp]}에서 ${drop[newPvp]}으로 바꿨습니다!"}]}`);
 }
 
 if (titlestyle == "a") {
@@ -1275,11 +1289,11 @@ if (titlestyle == "a") {
 
         if (res === null) return;
 
-        if (res.length < titleMaxLength) {
-            titleFileRead[username] = res;
-            const prefix = res;
+        if (res[0].length < titleMaxLength) {
+            titleFileRead[username] = res[0];
+            const prefix = res[0];
 
-            if (res !== undefined && username !== undefined) {
+            if (res[0] !== undefined && username !== undefined) {
                 titleFileRead[username] = prefix
                 saveTitle();
             }
