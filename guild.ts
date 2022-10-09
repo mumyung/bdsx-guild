@@ -167,6 +167,8 @@ events.entityDie.on((ev) => {
         }
     }
 })
+// 채팅 도배, 길이제한, 같은 메시지
+// 출처: sos9533scr (https://github.com/sos9533/bdsx-sos9533scr)
 
 const lastChatTimes: Record<string, number> = {};
 const LastChat: Record<string, string> = {};
